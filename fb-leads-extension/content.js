@@ -1,62 +1,187 @@
 (() => {
-  // Avoid re-injecting
   if (window.__fbLeadsInjected) return;
   window.__fbLeadsInjected = true;
 
-  const SELECTORS = {
-    // Members page: each member card
-    memberCard: '[data-visualcompletion="ignore-dynamic"] a[href*="/user/"], a[href*="facebook.com/"][role="link"]',
-    // Group feed: post containers
-    postContainer: '[data-pagelet^="FeedUnit"], [role="article"]',
-    // Author link inside a post
-    postAuthorLink: 'h2 a[href*="facebook.com/"], strong a[href*="facebook.com/"]',
-    // Post text content
-    postText: '[data-ad-comet-preview="message"], [data-ad-preview="message"], [dir="auto"] > div > div',
-    // Post timestamp link
-    postTimestamp: 'a[href*="?__cft__"], a[aria-label][href*="/posts/"], a[href*="/permalink/"]',
-  };
+  // ── profile URL validation ─────────────────────────────────────────────────
 
-  function cleanProfileUrl(raw) {
+  const SKIP_PATHS = [
+    '/groups/', '/pages/', '/events/', '/photo/', '/photos/',
+    '/video/', '/videos/', '/stories/', '/marketplace/', '/watch/',
+    '/gaming/', '/notifications/', '/messages/', '/bookmarks/',
+    '/friends/', '/help/', '/privacy/', '/settings/', '/ads/',
+    '/hashtag/', '/search/', '/login', '/checkpoint', '/recover',
+    '/composer/', '/share', '/sharer', '/dialog/', '/policies/',
+    '/about/', '/directory/', '/places/', '/business/',
+  ];
+
+  const FB_HOSTS = new Set([
+    'www.facebook.com', 'web.facebook.com', 'facebook.com', 'm.facebook.com',
+  ]);
+
+  function isProfileHref(href) {
+    if (!href) return false;
     try {
-      const url = new URL(raw, 'https://www.facebook.com');
-      // Strip tracking params, keep only path
-      const clean = url.origin + url.pathname;
-      return clean.replace(/\/$/, '');
-    } catch {
-      return raw;
-    }
+      const url = new URL(href, location.origin);
+      if (!FB_HOSTS.has(url.hostname)) return false;
+      const path = url.pathname;
+      const low = path.toLowerCase();
+      if (path.length < 2 || path === '/') return false;
+      if (SKIP_PATHS.some((p) => low.startsWith(p))) return false;
+      const first = path.split('/')[1] || '';
+      if (first.includes('.php') && first !== 'profile.php') return false;
+      if (low === '/profile.php') return url.searchParams.has('id');
+      if (low.startsWith('/people/')) return true;
+      if (low.startsWith('/user/')) return true;
+      if (/^\/[a-zA-Z][a-zA-Z0-9._-]{2,}$/.test(path)) return true;
+      return false;
+    } catch { return false; }
   }
 
-  function extractMembers() {
+  function cleanUrl(href) {
+    try {
+      const url = new URL(href, location.origin);
+      if (url.pathname.toLowerCase() === '/profile.php') {
+        return `${url.origin}/profile.php?id=${url.searchParams.get('id')}`;
+      }
+      return url.origin + url.pathname.replace(/\/$/, '');
+    } catch { return href; }
+  }
+
+  function extractName(el) {
+    const txt = el.textContent.trim();
+    if (txt.length >= 2 && txt.length < 80) return txt;
+    const lbl = el.getAttribute('aria-label') || '';
+    if (lbl.length >= 2) return lbl.trim();
+    return '';
+  }
+
+  // ── contact detail extraction from free text ───────────────────────────────
+
+  const EMAIL_RE  = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+  // Broad phone: 7–15 digits with optional spaces/dashes/parens/plus
+  const PHONE_RE  = /(?:\+?\d[\d\s\-().]{6,}\d)/g;
+  const URL_RE    = /https?:\/\/(?!(?:www\.)?facebook\.com)[^\s"'<>]{4,}/g;
+  // WhatsApp links
+  const WA_RE     = /wa\.me\/\d+|whatsapp[^\s"'<>]*/gi;
+
+  function parseContacts(text) {
+    const emails  = [...new Set((text.match(EMAIL_RE)  || []))];
+    const phones  = [...new Set((text.match(PHONE_RE)  || []).map((s) => s.trim()).filter((s) => s.replace(/\D/g, '').length >= 7))];
+    const websites = [...new Set((text.match(URL_RE)  || []))];
+    const whatsapp = [...new Set((text.match(WA_RE)   || []))];
+    return { emails, phones, websites, whatsapp };
+  }
+
+  // ── strategy 1: articles (post feed) ──────────────────────────────────────
+
+  function extractFromArticles() {
     const leads = [];
-    const seen = new Set();
+    const seen  = new Set();
 
-    // Try member list view (facebook.com/groups/xxx/members)
-    const memberRows = document.querySelectorAll('[role="listitem"]');
-    memberRows.forEach((row) => {
-      const link = row.querySelector('a[href*="facebook.com/"]');
-      if (!link) return;
+    document.querySelectorAll('[role="article"]').forEach((article) => {
+      const links = article.querySelectorAll('a[href]');
+      for (const link of links) {
+        if (!isProfileHref(link.href)) continue;
 
-      const profileUrl = cleanProfileUrl(link.href);
+        const profileUrl = cleanUrl(link.href);
+        if (seen.has(profileUrl)) break;
+        seen.add(profileUrl);
+
+        const name = extractName(link);
+        if (!name) break;
+
+        // Capture all visible text in the article for contact parsing
+        const fullText = article.innerText || article.textContent || '';
+
+        // First substantial text block that isn't the author name
+        let postText = '';
+        article.querySelectorAll('[dir="auto"]').forEach((el) => {
+          if (postText) return;
+          const t = el.textContent.trim();
+          if (t.length > 40 && t !== name) postText = t.slice(0, 400);
+        });
+
+        const postLink =
+          article.querySelector('a[href*="/posts/"]')  ||
+          article.querySelector('a[href*="/permalink/"]') ||
+          article.querySelector('a[href*="?story_fbid"]');
+        const postUrl = postLink ? cleanUrl(postLink.href) : '';
+
+        const contacts = parseContacts(fullText);
+
+        leads.push({
+          name, profileUrl, postText, postUrl, source: 'posts',
+          ...contacts,
+          extractedAt: new Date().toISOString(),
+        });
+        break;
+      }
+    });
+
+    return leads;
+  }
+
+  // ── strategy 2: list items (members page) ─────────────────────────────────
+
+  function extractFromListItems() {
+    const leads = [];
+    const seen  = new Set();
+
+    const items = [
+      ...document.querySelectorAll('[role="listitem"]'),
+      ...document.querySelectorAll('[role="list"] > div'),
+    ];
+
+    items.forEach((item) => {
+      const links = item.querySelectorAll('a[href]');
+      for (const link of links) {
+        if (!isProfileHref(link.href)) continue;
+
+        const profileUrl = cleanUrl(link.href);
+        if (seen.has(profileUrl)) return;
+        seen.add(profileUrl);
+
+        const name = extractName(link);
+        if (!name) return;
+
+        const spans = item.querySelectorAll('span[dir="auto"]');
+        const postText = spans.length > 1 ? spans[1].textContent.trim() : '';
+
+        const fullText = item.innerText || item.textContent || '';
+        const contacts = parseContacts(fullText);
+
+        leads.push({
+          name, profileUrl, postText, postUrl: '', source: 'members',
+          ...contacts,
+          extractedAt: new Date().toISOString(),
+        });
+        break;
+      }
+    });
+
+    return leads;
+  }
+
+  // ── strategy 3: full-page link scan (fallback) ────────────────────────────
+
+  function scanAllProfileLinks() {
+    const leads = [];
+    const seen  = new Set();
+
+    document.querySelectorAll('a[href]').forEach((link) => {
+      if (!isProfileHref(link.href)) return;
+
+      const profileUrl = cleanUrl(link.href);
       if (seen.has(profileUrl)) return;
       seen.add(profileUrl);
 
-      const nameEl = row.querySelector('span[dir="auto"]') || link;
-      const name = nameEl ? nameEl.textContent.trim() : '';
+      const name = extractName(link);
       if (!name || name.length < 2) return;
 
-      const imgEl = row.querySelector('img[src]');
-      const avatar = imgEl ? imgEl.src : '';
-
-      const subtitleEls = row.querySelectorAll('span[dir="auto"]');
-      const subtitle = subtitleEls.length > 1 ? subtitleEls[1].textContent.trim() : '';
-
       leads.push({
-        name,
-        profileUrl,
-        avatar,
-        subtitle,
-        source: 'members',
+        name, profileUrl, postText: '', postUrl: '',
+        emails: [], phones: [], websites: [], whatsapp: [],
+        source: 'scan',
         extractedAt: new Date().toISOString(),
       });
     });
@@ -64,80 +189,40 @@
     return leads;
   }
 
-  function extractPostAuthors() {
-    const leads = [];
-    const seen = new Set();
+  // ── debug snapshot ─────────────────────────────────────────────────────────
 
-    const articles = document.querySelectorAll('[role="article"]');
-    articles.forEach((article) => {
-      // Author link — usually a strong > a or h2 > a near the top
-      const authorLink =
-        article.querySelector('h2 a[href*="facebook.com/"]') ||
-        article.querySelector('strong > a[href*="facebook.com/"]') ||
-        article.querySelector('a[aria-label][href*="facebook.com/"]');
-
-      if (!authorLink) return;
-
-      const profileUrl = cleanProfileUrl(authorLink.href);
-      if (seen.has(profileUrl)) return;
-      seen.add(profileUrl);
-
-      const name = authorLink.textContent.trim();
-      if (!name || name.length < 2) return;
-
-      // Post text — grab the first substantial text block
-      const textCandidates = article.querySelectorAll('[dir="auto"]');
-      let postText = '';
-      textCandidates.forEach((el) => {
-        if (postText) return;
-        const t = el.textContent.trim();
-        if (t.length > 30 && !el.querySelector('a')) postText = t.slice(0, 300);
-      });
-
-      // Timestamp
-      const tsLink =
-        article.querySelector('a[href*="/posts/"]') ||
-        article.querySelector('a[href*="/permalink/"]') ||
-        article.querySelector('abbr[data-utime]');
-      const postUrl = tsLink ? cleanProfileUrl(tsLink.href) : '';
-
-      leads.push({
-        name,
-        profileUrl,
-        avatar: '',
-        subtitle: postText,
-        postUrl,
-        source: 'posts',
-        extractedAt: new Date().toISOString(),
-      });
-    });
-
-    return leads;
+  function debugSnapshot() {
+    const articles     = document.querySelectorAll('[role="article"]').length;
+    const listItems    = document.querySelectorAll('[role="listitem"]').length;
+    const allLinks     = document.querySelectorAll('a[href]').length;
+    const profileLinks = [...document.querySelectorAll('a[href]')]
+      .filter((a) => isProfileHref(a.href)).length;
+    const sampleHrefs  = [...document.querySelectorAll('a[href]')]
+      .slice(0, 15).map((a) => a.href);
+    return { articles, listItems, allLinks, profileLinks, sampleHrefs, url: location.href };
   }
+
+  // ── main ───────────────────────────────────────────────────────────────────
 
   function run(mode) {
-    const isMembers = window.location.pathname.includes('/members');
+    const isMembers = location.pathname.toLowerCase().includes('/members');
     let leads = [];
 
-    if (mode === 'members' || isMembers) {
-      leads = extractMembers();
-      if (leads.length === 0) leads = extractPostAuthors(); // fallback
+    if (mode === 'members' || (mode === 'auto' && isMembers)) {
+      leads = extractFromListItems();
+      if (leads.length === 0) leads = extractFromArticles();
     } else {
-      leads = extractPostAuthors();
+      leads = extractFromArticles();
     }
 
-    return { leads, url: window.location.href, title: document.title };
+    if (leads.length === 0) leads = scanAllProfileLinks();
+
+    return { leads, debug: debugSnapshot() };
   }
 
-  // Listen for messages from popup
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg.action === 'extract') {
-      const result = run(msg.mode || 'auto');
-      sendResponse(result);
-    }
-    if (msg.action === 'ping') {
-      sendResponse({ ok: true });
-    }
-    return true; // keep channel open for async
+    if (msg.action === 'extract') sendResponse(run(msg.mode || 'auto'));
+    if (msg.action === 'ping')    sendResponse({ ok: true });
+    return true;
   });
 })();

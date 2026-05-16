@@ -152,12 +152,28 @@ td {
   white-space: nowrap;
 }
 
-td.info-cell {
+td.info-cell,
+td.contact-cell {
   white-space: normal;
   word-break: break-word;
-  max-height: 50px;
+  max-height: 60px;
   overflow: hidden;
+  font-size: 11px;
 }
+
+.none { color: #aaa; }
+
+.debug-box {
+  background: #fff8e1;
+  border-left: 3px solid #f59f00;
+  font-size: 11px;
+  padding: 6px 12px;
+  line-height: 1.5;
+}
+
+.debug-box .warn { color: #c0392b; font-weight: 600; }
+
+.src-scan { background: #f3e8ff; color: #7c3aed; }
 
 td a {
   color: #1877f2;
