@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FB Group Leads</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="header">
+    <div class="logo">&#128100;</div>
+    <div>
+      <h1>FB Group Leads</h1>
+      <p id="status-bar" class="status">Navigate to a Facebook Group to begin.</p>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="mode-row">
+      <label class="mode-label">Extract from:</label>
+      <select id="mode-select">
+        <option value="auto">Auto detect</option>
+        <option value="posts">Feed posts</option>
+        <option value="members">Members list</option>
+      </select>
+    </div>
+
+    <div class="btn-row">
+      <button id="btn-extract" class="btn primary">&#128269; Extract Leads</button>
+      <button id="btn-scroll" class="btn secondary" title="Auto-scroll to load more content">&#8615; Auto-scroll</button>
+    </div>
+
+    <div class="btn-row">
+      <button id="btn-export-csv" class="btn success">&#8595; Export CSV</button>
+      <button id="btn-export-json" class="btn success">&#8495; Export JSON</button>
+      <button id="btn-clear" class="btn danger">&#128465; Clear</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <span id="count-badge" class="badge">0 leads stored</span>
+    <span id="session-badge" class="badge secondary">0 new this session</span>
+  </div>
+
+  <div class="table-wrap">
+    <table id="leads-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Profile</th>
+          <th>Info</th>
+          <th>Source</th>
+        </tr>
+      </thead>
+      <tbody id="leads-body">
+        <tr id="empty-row">
+          <td colspan="5" class="empty">No leads yet. Extract from a Facebook Group page.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
