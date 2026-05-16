@@ -15,6 +15,7 @@
     </div>
   </div>
 
+  <!-- ── Group extraction controls ── -->
   <div class="controls">
     <div class="mode-row">
       <label class="mode-label">Extract from:</label>
@@ -24,21 +25,39 @@
         <option value="members">Members list</option>
       </select>
     </div>
-
     <div class="btn-row">
       <button id="btn-extract" class="btn primary">&#128269; Extract Leads</button>
       <button id="btn-scroll"  class="btn secondary">&#8615; Auto-scroll</button>
       <button id="btn-enrich"  class="btn accent">&#9889; Enrich Profiles</button>
     </div>
-
     <div class="btn-row">
       <button id="btn-export-csv"  class="btn success">&#8595; CSV</button>
       <button id="btn-export-json" class="btn success">&#8495; JSON</button>
       <button id="btn-clear"       class="btn danger">&#128465; Clear</button>
+      <button id="btn-toggle-marketplace" class="btn secondary">&#128722; Marketplace File</button>
     </div>
   </div>
 
-  <!-- Enrichment progress bar (shown during enrichment) -->
+  <!-- ── Marketplace file upload (collapsible) ── -->
+  <div id="marketplace-panel" class="marketplace-panel" style="display:none">
+    <div class="mp-header">&#128722; Import from Marketplace Listing File</div>
+    <div class="mp-body">
+      <p class="mp-hint">
+        Upload a <strong>CSV, JSON, or TXT</strong> file containing Facebook Marketplace
+        listing URLs or seller profile URLs. The extension will visit each listing,
+        find the seller, then scrape their About page for contact details.
+      </p>
+      <div class="upload-row">
+        <label for="file-input" class="file-btn">&#128194; Choose File</label>
+        <input type="file" id="file-input" accept=".csv,.json,.txt" />
+        <span id="file-name" class="file-name">No file chosen</span>
+      </div>
+      <div id="file-info" class="file-info" style="display:none"></div>
+      <button id="btn-process-file" class="btn accent" disabled>&#9889; Process Entries</button>
+    </div>
+  </div>
+
+  <!-- ── Progress bar (enrichment + marketplace) ── -->
   <div id="enrich-bar" class="enrich-bar" style="display:none">
     <div class="progress-track">
       <div id="progress-fill" class="progress-fill"></div>
@@ -48,14 +67,17 @@
   </div>
   <div id="progress-label" class="progress-label" style="display:none"></div>
 
+  <!-- ── Stats ── -->
   <div class="stats-row">
     <span id="count-badge"   class="badge">0 leads stored</span>
     <span id="session-badge" class="badge secondary">0 new this session</span>
-    <span id="enrich-badge"  class="badge accent"    style="display:none">0 enriched</span>
+    <span id="enrich-badge"  class="badge accent" style="display:none">0 enriched</span>
+    <span id="mp-badge"      class="badge mp"     style="display:none">0 from marketplace</span>
   </div>
 
   <div id="debug-box" class="debug-box" style="display:none"></div>
 
+  <!-- ── Leads table ── -->
   <div class="table-wrap">
     <table id="leads-table">
       <thead>
@@ -69,13 +91,14 @@
           <th>Website</th>
           <th>Work</th>
           <th>Location</th>
-          <th>Post Snippet</th>
+          <th>Item / Snippet</th>
+          <th>Price</th>
           <th>Src</th>
         </tr>
       </thead>
       <tbody id="leads-body">
         <tr id="empty-row">
-          <td colspan="11" class="empty">No leads yet. Extract from a Facebook Group page.</td>
+          <td colspan="12" class="empty">No leads yet.</td>
         </tr>
       </tbody>
     </table>

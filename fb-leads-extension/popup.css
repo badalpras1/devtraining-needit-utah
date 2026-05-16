@@ -5,9 +5,9 @@ body {
   font-size: 13px;
   background: #f0f2f5;
   color: #1c1e21;
-  width: 640px;
+  width: 680px;
   min-height: 300px;
-  max-height: 620px;
+  max-height: 640px;
   display: flex;
   flex-direction: column;
 }
@@ -21,7 +21,7 @@ body {
   align-items: center;
   gap: 10px;
 }
-.logo { font-size: 28px; line-height: 1; }
+.logo { font-size: 26px; line-height: 1; }
 .header h1 { font-size: 15px; font-weight: 700; }
 .status { font-size: 11px; opacity: 0.85; margin-top: 2px; }
 
@@ -49,7 +49,7 @@ select {
 .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .btn {
-  padding: 6px 12px;
+  padding: 5px 11px;
   border: none;
   border-radius: 6px;
   font-size: 12px;
@@ -60,7 +60,7 @@ select {
 }
 .btn:hover    { opacity: 0.85; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn.sm       { padding: 3px 8px; font-size: 11px; }
+.btn.sm       { padding: 2px 7px; font-size: 11px; }
 
 .btn.primary   { background: #1877f2; color: #fff; }
 .btn.secondary { background: #e4e6eb; color: #1c1e21; }
@@ -68,7 +68,48 @@ select {
 .btn.danger    { background: #fa383e; color: #fff; }
 .btn.accent    { background: #7c3aed; color: #fff; }
 
-/* ── enrich progress bar ── */
+/* ── marketplace panel ── */
+.marketplace-panel {
+  background: #faf5ff;
+  border-bottom: 1px solid #d8b4fe;
+}
+.mp-header {
+  background: #7c3aed;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 14px;
+}
+.mp-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+.mp-hint { font-size: 11px; color: #4b5563; line-height: 1.5; }
+
+.upload-row { display: flex; align-items: center; gap: 8px; }
+
+.file-btn {
+  display: inline-block;
+  padding: 5px 10px;
+  background: #e4e6eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.file-btn:hover { background: #d8dade; }
+
+#file-input { display: none; }
+
+.file-name { font-size: 11px; color: #606770; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.file-info {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.file-info.success { background: #d1fae5; color: #065f46; }
+.file-info.error   { background: #fee2e2; color: #991b1b; }
+
+/* ── progress bar ── */
 .enrich-bar {
   display: flex;
   align-items: center;
@@ -95,7 +136,7 @@ select {
 .progress-label {
   font-size: 11px;
   color: #6b21a8;
-  padding: 2px 14px 4px;
+  padding: 2px 14px 5px;
   background: #f3e8ff;
 }
 
@@ -103,7 +144,7 @@ select {
 .stats-row {
   display: flex;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 5px 14px;
   background: #f0f2f5;
   flex-wrap: wrap;
 }
@@ -117,13 +158,14 @@ select {
 }
 .badge.secondary { background: #42b72a; }
 .badge.accent    { background: #7c3aed; }
+.badge.mp        { background: #ea580c; }
 
-/* ── debug box ── */
+/* ── debug ── */
 .debug-box {
   background: #fff8e1;
   border-left: 3px solid #f59f00;
   font-size: 11px;
-  padding: 6px 12px;
+  padding: 5px 12px;
   line-height: 1.5;
 }
 .debug-box .warn { color: #c0392b; font-weight: 600; }
@@ -137,23 +179,25 @@ thead th {
   position: sticky;
   top: 0;
   background: #f0f2f5;
-  padding: 5px 6px;
+  padding: 5px 5px;
   text-align: left;
   font-weight: 700;
   border-bottom: 2px solid #ddd;
   white-space: nowrap;
 }
 
-tbody tr:nth-child(even) { background: #f7f8fa; }
-tbody tr:hover           { background: #e7f3ff; }
-tbody tr.enriched-row    { background: #f5f0ff; }
-tbody tr.enriched-row:hover { background: #ede9fe; }
+tbody tr:nth-child(even)  { background: #f7f8fa; }
+tbody tr:hover             { background: #e7f3ff; }
+tbody tr.enriched-row      { background: #f5f0ff; }
+tbody tr.enriched-row:hover{ background: #ede9fe; }
+tbody tr.mp-row            { background: #fff7ed; }
+tbody tr.mp-row:hover      { background: #ffedd5; }
 
 td {
-  padding: 4px 6px;
+  padding: 4px 5px;
   border-bottom: 1px solid #eee;
   vertical-align: top;
-  max-width: 130px;
+  max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -169,7 +213,6 @@ td.contact-cell {
 
 td a { color: #1877f2; text-decoration: none; }
 td a:hover { text-decoration: underline; }
-
 .none { color: #aaa; }
 
 .src-tag {
@@ -182,6 +225,7 @@ td a:hover { text-decoration: underline; }
 .src-members { background: #e7f3ff; color: #1877f2; }
 .src-posts   { background: #f0fff4; color: #1b873a; }
 .src-scan    { background: #f3e8ff; color: #7c3aed; }
+.src-mp      { background: #fff7ed; color: #ea580c; }
 
 .empty {
   text-align: center;
